@@ -28,10 +28,14 @@ func InitZRedis(servers, sentinels []string, passwd, db, mtag string) (zr *ZRedi
         DB:        db,
     }
 
+    //fmt.Println("redis servers:", servers)
+
     //获取可用的server
     if err := zr.GetActiveServer(); err != nil {
         return nil, err
     }
+
+    //fmt.Println("redis server:", zr.AServer)
 
     //连接池
     zr.Pool = NewPool(zr.AServer, zr.Password, zr.DB)
@@ -76,28 +80,31 @@ func (zr *ZRedis) GetActiveServer() error {
     if len(zr.Sentinels) > 0 { //有sentinel列表,向sentinel询问master
         for _, sentinel := range zr.Sentinels {
             //fmt.Println("sentinel:", sentinel)
-            if c, err := redis.Dial("tcp", sentinel); err == nil {
-                //连接成功, 找master
-                mInfo, err := Strings(c.Do("SENTINEL", "get-master-addr-by-name", zr.Mtag))
-                c.Close()
-                //fmt.Println(mInfo)
-                if err == nil && len(mInfo) == 2 { //host + port
-                    zr.AServer = strings.Join(mInfo, ":")
-                    return nil
+            if sentinel != "" {
+                if c, err := redis.Dial("tcp", sentinel); err == nil {
+                    //连接成功, 找master
+                    mInfo, err := Strings(c.Do("SENTINEL", "get-master-addr-by-name", zr.Mtag))
+                    c.Close()
+                    //fmt.Println(mInfo)
+                    if err == nil && len(mInfo) == 2 { //host + port
+                        zr.AServer = strings.Join(mInfo, ":")
+                        return nil
+                    }
                 }
             }
         }
-    } else {
-        if len(zr.Servers) <= 0 {
-            return errors.New("no server!")
-        }
+    }
+    if len(zr.Servers) > 0 {
         for _, server := range zr.Servers {
-            //尝试连接
-            if c, err := redis.Dial("tcp", server); err == nil {
-                //连接成功, 返回
-                c.Close()
-                zr.AServer = server
-                return nil
+            //fmt.Println("server:", server)
+            if server != "" {
+                //尝试连接
+                if c, err := redis.Dial("tcp", server); err == nil {
+                    //连接成功, 返回
+                    c.Close()
+                    zr.AServer = server
+                    return nil
+                }
             }
             //失败,继续
         }
