@@ -10,4 +10,18 @@ zredis
 #用法
 
 ```
+import (
+    "github.com/zhaocloud/goutils/zredis"
+)
+var (
+    ZhaoRedis     *zredis.ZRedis
+)
+func main() {
+    ...
+    ZhaoRedis, _ = zredis.InitZRedis(servers, sentinels, redisPwd, redisDB, redisMTag)
+    redisConn := ZhaoRedis.Pool.Get()
+    redisConn.Do(...)
+    ...
+}
+
 ```
