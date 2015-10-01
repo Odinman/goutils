@@ -53,8 +53,8 @@ func InitZRedis(servers interface{}, sentinels []string, passwd, db, mtag string
 // 针对单个redis server建立连接池
 func NewPool(server, password, db string) *redis.Pool {
 	return &redis.Pool{
-		MaxIdle:     5,
-		IdleTimeout: 240 * time.Second,
+		MaxIdle:     10,
+		IdleTimeout: 60 * time.Second,
 		Dial: func() (redis.Conn, error) {
 			c, err := redis.Dial("tcp", server)
 			if err != nil {
@@ -76,8 +76,11 @@ func NewPool(server, password, db string) *redis.Pool {
 			return c, err
 		},
 		TestOnBorrow: func(c redis.Conn, t time.Time) error {
-			_, err := c.Do("PING")
-			return err
+			if t.Add(5 * time.Second).After(time.Now()) { //每隔5秒test一次
+				_, err := c.Do("PING")
+				return err
+			}
+			return nil
 		},
 	}
 }
